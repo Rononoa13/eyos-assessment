@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>report.html</title>
+    <link href="assets/style.css" rel="stylesheet" type="text/css"/></head>
+  <body onLoad="init()">
+    <script>/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+
+function toArray(iter) {
+    if (iter === null) {
+        return null;
+    }
+    return Array.prototype.slice.call(iter);
+}
+
+function find(selector, elem) { // eslint-disable-line no-redeclare
+    if (!elem) {
+        elem = document;
+    }
+    return elem.querySelector(selector);
+}
+
+function findAll(selector, elem) {
+    if (!elem) {
+        elem = document;
+    }
+    return toArray(elem.querySelectorAll(selector));
+}
+
+function sortColumn(elem) {
+    toggleSortStates(elem);
+    const colIndex = toArray(elem.parentNode.childNodes).indexOf(elem);
+    let key;
+    if (elem.classList.contains('result')) {
+        key = keyResult;
+    } else if (elem.classList.contains('links')) {
+        key = keyLink;
+    } else {
+        key = keyAlpha;
+    }
+    sortTable(elem, key(colIndex));
+}
+
+function showAllExtras() { // eslint-disable-line no-unused-vars
+    findAll('.col-result').forEach(showExtras);
+}
+
+function hideAllExtras() { // eslint-disable-line no-unused-vars
+    findAll('.col-result').forEach(hideExtras);
+}
+
+function showExtras(colresultElem) {
+    const extras = colresultElem.parentNode.nextElementSibling;
+    const expandcollapse = colresultElem.firstElementChild;
+    extras.classList.remove('collapsed');
+    expandcollapse.classList.remove('expander');
+    expandcollapse.classList.add('collapser');
+}
+
+function hideExtras(colresultElem) {
+    const extras = colresultElem.parentNode.nextElementSibling;
+    const expandcollapse = colresultElem.firstElementChild;
+    extras.classList.add('collapsed');
+    expandcollapse.classList.remove('collapser');
+    expandcollapse.classList.add('expander');
+}
+
+function showFilters() {
+    let visibleString = getQueryParameter('visible') || 'all';
+    visibleString = visibleString.toLowerCase();
+    const checkedItems = visibleString.split(',');
+
+    const filterItems = document.getElementsByClassName('filter');
+    for (let i = 0; i < filterItems.length; i++) {
+        filterItems[i].hidden = false;
+
+        if (visibleString != 'all') {
+            filterItems[i].checked = checkedItems.includes(filterItems[i].getAttribute('data-test-result'));
+            filterTable(filterItems[i]);
+        }
+    }
+}
+
+function addCollapse() {
+    // Add links for show/hide all
+    const resulttable = find('table#results-table');
+    const showhideall = document.createElement('p');
+    showhideall.innerHTML = '<a href="javascript:showAllExtras()">Show all details</a> / ' +
+                            '<a href="javascript:hideAllExtras()">Hide all details</a>';
+    resulttable.parentElement.insertBefore(showhideall, resulttable);
+
+    // Add show/hide link to each result
+    findAll('.col-result').forEach(function(elem) {
+        const collapsed = getQueryParameter('collapsed') || 'Passed';
+        const extras = elem.parentNode.nextElementSibling;
+        const expandcollapse = document.createElement('span');
+        if (extras.classList.contains('collapsed')) {
+            expandcollapse.classList.add('expander');
+        } else if (collapsed.includes(elem.innerHTML)) {
+            extras.classList.add('collapsed');
+            expandcollapse.classList.add('expander');
+        } else {
+            expandcollapse.classList.add('collapser');
+        }
+        elem.appendChild(expandcollapse);
+
+        elem.addEventListener('click', function(event) {
+            if (event.currentTarget.parentNode.nextElementSibling.classList.contains('collapsed')) {
+                showExtras(event.currentTarget);
+            } else {
+                hideExtras(event.currentTarget);
+            }
+        });
+    });
+}
+
+function getQueryParameter(name) {
+    const match = RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+    return match && decodeURIComponent(match[1].replace(/\+/g, ' '));
+}
+
+function init () { // eslint-disable-line no-unused-vars
+    resetSortHeaders();
+
+    addCollapse();
+
+    showFilters();
+
+    sortColumn(find('.initial-sort'));
+
+    findAll('.sortable').forEach(function(elem) {
+        elem.addEventListener('click',
+            function() {
+                sortColumn(elem);
+            }, false);
+    });
+}
+
+function sortTable(clicked, keyFunc) {
+    const rows = findAll('.results-table-row');
+    const reversed = !clicked.classList.contains('asc');
+    const sortedRows = sort(rows, keyFunc, reversed);
+    /* Whole table is removed here because browsers acts much slower
+     * when appending existing elements.
+     */
+    const thead = document.getElementById('results-table-head');
+    document.getElementById('results-table').remove();
+    const parent = document.createElement('table');
+    parent.id = 'results-table';
+    parent.appendChild(thead);
+    sortedRows.forEach(function(elem) {
+        parent.appendChild(elem);
+    });
+    document.getElementsByTagName('BODY')[0].appendChild(parent);
+}
+
+function sort(items, keyFunc, reversed) {
+    const sortArray = items.map(function(item, i) {
+        return [keyFunc(item), i];
+    });
+
+    sortArray.sort(function(a, b) {
+        const keyA = a[0];
+        const keyB = b[0];
+
+        if (keyA == keyB) return 0;
+
+        if (reversed) {
+            return keyA < keyB ? 1 : -1;
+        } else {
+            return keyA > keyB ? 1 : -1;
+        }
+    });
+
+    return sortArray.map(function(item) {
+        const index = item[1];
+        return items[index];
+    });
+}
+
+function keyAlpha(colIndex) {
+    return function(elem) {
+        return elem.childNodes[1].childNodes[colIndex].firstChild.data.toLowerCase();
+    };
+}
+
+function keyLink(colIndex) {
+    return function(elem) {
+        const dataCell = elem.childNodes[1].childNodes[colIndex].firstChild;
+        return dataCell == null ? '' : dataCell.innerText.toLowerCase();
+    };
+}
+
+function keyResult(colIndex) {
+    return function(elem) {
+        const strings = ['Error', 'Failed', 'Rerun', 'XFailed', 'XPassed',
+            'Skipped', 'Passed'];
+        return strings.indexOf(elem.childNodes[1].childNodes[colIndex].firstChild.data);
+    };
+}
+
+function resetSortHeaders() {
+    findAll('.sort-icon').forEach(function(elem) {
+        elem.parentNode.removeChild(elem);
+    });
+    findAll('.sortable').forEach(function(elem) {
+        const icon = document.createElement('div');
+        icon.className = 'sort-icon';
+        icon.textContent = 'vvv';
+        elem.insertBefore(icon, elem.firstChild);
+        elem.classList.remove('desc', 'active');
+        elem.classList.add('asc', 'inactive');
+    });
+}
+
+function toggleSortStates(elem) {
+    //if active, toggle between asc and desc
+    if (elem.classList.contains('active')) {
+        elem.classList.toggle('asc');
+        elem.classList.toggle('desc');
+    }
+
+    //if inactive, reset all other functions and add ascending active
+    if (elem.classList.contains('inactive')) {
+        resetSortHeaders();
+        elem.classList.remove('inactive');
+        elem.classList.add('active');
+    }
+}
+
+function isAllRowsHidden(value) {
+    return value.hidden == false;
+}
+
+function filterTable(elem) { // eslint-disable-line no-unused-vars
+    const outcomeAtt = 'data-test-result';
+    const outcome = elem.getAttribute(outcomeAtt);
+    const classOutcome = outcome + ' results-table-row';
+    const outcomeRows = document.getElementsByClassName(classOutcome);
+
+    for(let i = 0; i < outcomeRows.length; i++){
+        outcomeRows[i].hidden = !elem.checked;
+    }
+
+    const rows = findAll('.results-table-row').filter(isAllRowsHidden);
+    const allRowsHidden = rows.length == 0 ? true : false;
+    const notFoundMessage = document.getElementById('not-found-message');
+    notFoundMessage.hidden = !allRowsHidden;
+}
+</script>
+    <h1>report.html</h1>
+    <p>Report generated on 20-Mar-2023 at 23:26:28 by <a href="https://pypi.python.org/pypi/pytest-html">pytest-html</a> v3.2.0</p>
+    <h2>Environment</h2>
+    <table id="environment">
+      <tr>
+        <td>Packages</td>
+        <td>{"pluggy": "1.0.0", "pytest": "7.2.2"}</td></tr>
+      <tr>
+        <td>Platform</td>
+        <td>Linux-5.19.0-35-generic-x86_64-with-glibc2.35</td></tr>
+      <tr>
+        <td>Plugins</td>
+        <td>{"allure-pytest": "2.13.1", "html": "3.2.0", "metadata": "2.0.4"}</td></tr>
+      <tr>
+        <td>Python</td>
+        <td>3.10.6</td></tr></table>
+    <h2>Summary</h2>
+    <p>3 tests ran in 7.09 seconds. </p>
+    <p class="filter" hidden="true">(Un)check the boxes to filter the results.</p><input checked="true" class="filter" data-test-result="passed" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="passed">3 passed</span>, <input checked="true" class="filter" data-test-result="skipped" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="skipped">0 skipped</span>, <input checked="true" class="filter" data-test-result="failed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="failed">0 failed</span>, <input checked="true" class="filter" data-test-result="error" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="error">0 errors</span>, <input checked="true" class="filter" data-test-result="xfailed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="xfailed">0 expected failures</span>, <input checked="true" class="filter" data-test-result="xpassed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="xpassed">0 unexpected passes</span>
+    <h2>Results</h2>
+    <table id="results-table">
+      <thead id="results-table-head">
+        <tr>
+          <th class="sortable result initial-sort" col="result">Result</th>
+          <th class="sortable" col="name">Test</th>
+          <th class="sortable" col="duration">Duration</th>
+          <th class="sortable links" col="links">Links</th></tr>
+        <tr hidden="true" id="not-found-message">
+          <th colspan="4">No results found. Try to check the filters</th></tr></thead>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_languages.py::test_successful_connection</td>
+          <td class="col-duration">0.00</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>{
+   &quot;data&quot;: {
+      &quot;languages&quot;: [
+         {
+            &quot;language&quot;: &quot;af&quot;
+         },
+         {
+            &quot;language&quot;: &quot;ak&quot;
+         },
+         {
+            &quot;language&quot;: &quot;am&quot;
+         },
+         {
+            &quot;language&quot;: &quot;ar&quot;
+         },
+         {
+            &quot;language&quot;: &quot;as&quot;
+         },
+         {
+            &quot;language&quot;: &quot;ay&quot;
+         },
+         {
+            &quot;language&quot;: &quot;az&quot;
+         },
+         {
+            &quot;language&quot;: &quot;be&quot;
+         },
+         {
+            &quot;language&quot;: &quot;bg&quot;
+         },
+         {
+            &quot;language&quot;: &quot;bho&quot;
+         },
+         {
+            &quot;language&quot;: &quot;bm&quot;
+         },
+         {
+            &quot;language&quot;: &quot;bn&quot;
+         },
+         {
+            &quot;language&quot;: &quot;bs&quot;
+         },
+         {
+            &quot;language&quot;: &quot;ca&quot;
+         },
+         {
+            &quot;language&quot;: &quot;ceb&quot;
+         },
+         {
+            &quot;language&quot;: &quot;ckb&quot;
+         },
+         {
+            &quot;language&quot;: &quot;co&quot;
+         },
+         {
+            &quot;language&quot;: &quot;cs&quot;
+         },
+         {
+            &quot;language&quot;: &quot;cy&quot;
+         },
+         {
+            &quot;language&quot;: &quot;da&quot;
+         },
+         {
+            &quot;language&quot;: &quot;de&quot;
+         },
+         {
+            &quot;language&quot;: &quot;doi&quot;
+         },
+         {
+            &quot;language&quot;: &quot;dv&quot;
+         },
+         {
+            &quot;language&quot;: &quot;ee&quot;
+         },
+         {
+            &quot;language&quot;: &quot;el&quot;
+         },
+         {
+            &quot;language&quot;: &quot;en&quot;
+         },
+         {
+            &quot;language&quot;: &quot;eo&quot;
+         },
+         {
+            &quot;language&quot;: &quot;es&quot;
+         },
+         {
+            &quot;language&quot;: &quot;et&quot;
+         },
+         {
+            &quot;language&quot;: &quot;eu&quot;
+         },
+         {
+            &quot;language&quot;: &quot;fa&quot;
+         },
+         {
+            &quot;language&quot;: &quot;fi&quot;
+         },
+         {
+            &quot;language&quot;: &quot;fr&quot;
+         },
+         {
+            &quot;language&quot;: &quot;fy&quot;
+         },
+         {
+            &quot;language&quot;: &quot;ga&quot;
+         },
+         {
+            &quot;language&quot;: &quot;gd&quot;
+         },
+         {
+            &quot;language&quot;: &quot;gl&quot;
+         },
+         {
+            &quot;language&quot;: &quot;gn&quot;
+         },
+         {
+            &quot;language&quot;: &quot;gom&quot;
+         },
+         {
+            &quot;language&quot;: &quot;gu&quot;
+         },
+         {
+            &quot;language&quot;: &quot;ha&quot;
+         },
+         {
+            &quot;language&quot;: &quot;haw&quot;
+         },
+         {
+            &quot;language&quot;: &quot;he&quot;
+         },
+         {
+            &quot;language&quot;: &quot;hi&quot;
+         },
+         {
+            &quot;language&quot;: &quot;hmn&quot;
+         },
+         {
+            &quot;language&quot;: &quot;hr&quot;
+         },
+         {
+            &quot;language&quot;: &quot;ht&quot;
+         },
+         {
+            &quot;language&quot;: &quot;hu&quot;
+         },
+         {
+            &quot;language&quot;: &quot;hy&quot;
+         },
+         {
+            &quot;language&quot;: &quot;id&quot;
+         },
+         {
+            &quot;language&quot;: &quot;ig&quot;
+         },
+         {
+            &quot;language&quot;: &quot;ilo&quot;
+         },
+         {
+            &quot;language&quot;: &quot;is&quot;
+         },
+         {
+            &quot;language&quot;: &quot;it&quot;
+         },
+         {
+            &quot;language&quot;: &quot;iw&quot;
+         },
+         {
+            &quot;language&quot;: &quot;ja&quot;
+         },
+         {
+            &quot;language&quot;: &quot;jv&quot;
+         },
+         {
+            &quot;language&quot;: &quot;jw&quot;
+         },
+         {
+            &quot;language&quot;: &quot;ka&quot;
+         },
+         {
+            &quot;language&quot;: &quot;kk&quot;
+         },
+         {
+            &quot;language&quot;: &quot;km&quot;
+         },
+         {
+            &quot;language&quot;: &quot;kn&quot;
+         },
+         {
+            &quot;language&quot;: &quot;ko&quot;
+         },
+         {
+            &quot;language&quot;: &quot;kri&quot;
+         },
+         {
+            &quot;language&quot;: &quot;ku&quot;
+         },
+         {
+            &quot;language&quot;: &quot;ky&quot;
+         },
+         {
+            &quot;language&quot;: &quot;la&quot;
+         },
+         {
+            &quot;language&quot;: &quot;lb&quot;
+         },
+         {
+            &quot;language&quot;: &quot;lg&quot;
+         },
+         {
+            &quot;language&quot;: &quot;ln&quot;
+         },
+         {
+            &quot;language&quot;: &quot;lo&quot;
+         },
+         {
+            &quot;language&quot;: &quot;lt&quot;
+         },
+         {
+            &quot;language&quot;: &quot;lus&quot;
+         },
+         {
+            &quot;language&quot;: &quot;lv&quot;
+         },
+         {
+            &quot;language&quot;: &quot;mai&quot;
+         },
+         {
+            &quot;language&quot;: &quot;mg&quot;
+         },
+         {
+            &quot;language&quot;: &quot;mi&quot;
+         },
+         {
+            &quot;language&quot;: &quot;mk&quot;
+         },
+         {
+            &quot;language&quot;: &quot;ml&quot;
+         },
+         {
+            &quot;language&quot;: &quot;mn&quot;
+         },
+         {
+            &quot;language&quot;: &quot;mni-Mtei&quot;
+         },
+         {
+            &quot;language&quot;: &quot;mr&quot;
+         },
+         {
+            &quot;language&quot;: &quot;ms&quot;
+         },
+         {
+            &quot;language&quot;: &quot;mt&quot;
+         },
+         {
+            &quot;language&quot;: &quot;my&quot;
+         },
+         {
+            &quot;language&quot;: &quot;ne&quot;
+         },
+         {
+            &quot;language&quot;: &quot;nl&quot;
+         },
+         {
+            &quot;language&quot;: &quot;no&quot;
+         },
+         {
+            &quot;language&quot;: &quot;nso&quot;
+         },
+         {
+            &quot;language&quot;: &quot;ny&quot;
+         },
+         {
+            &quot;language&quot;: &quot;om&quot;
+         },
+         {
+            &quot;language&quot;: &quot;or&quot;
+         },
+         {
+            &quot;language&quot;: &quot;pa&quot;
+         },
+         {
+            &quot;language&quot;: &quot;pl&quot;
+         },
+         {
+            &quot;language&quot;: &quot;ps&quot;
+         },
+         {
+            &quot;language&quot;: &quot;pt&quot;
+         },
+         {
+            &quot;language&quot;: &quot;qu&quot;
+         },
+         {
+            &quot;language&quot;: &quot;ro&quot;
+         },
+         {
+            &quot;language&quot;: &quot;ru&quot;
+         },
+         {
+            &quot;language&quot;: &quot;rw&quot;
+         },
+         {
+            &quot;language&quot;: &quot;sa&quot;
+         },
+         {
+            &quot;language&quot;: &quot;sd&quot;
+         },
+         {
+            &quot;language&quot;: &quot;si&quot;
+         },
+         {
+            &quot;language&quot;: &quot;sk&quot;
+         },
+         {
+            &quot;language&quot;: &quot;sl&quot;
+         },
+         {
+            &quot;language&quot;: &quot;sm&quot;
+         },
+         {
+            &quot;language&quot;: &quot;sn&quot;
+         },
+         {
+            &quot;language&quot;: &quot;so&quot;
+         },
+         {
+            &quot;language&quot;: &quot;sq&quot;
+         },
+         {
+            &quot;language&quot;: &quot;sr&quot;
+         },
+         {
+            &quot;language&quot;: &quot;st&quot;
+         },
+         {
+            &quot;language&quot;: &quot;su&quot;
+         },
+         {
+            &quot;language&quot;: &quot;sv&quot;
+         },
+         {
+            &quot;language&quot;: &quot;sw&quot;
+         },
+         {
+            &quot;language&quot;: &quot;ta&quot;
+         },
+         {
+            &quot;language&quot;: &quot;te&quot;
+         },
+         {
+            &quot;language&quot;: &quot;tg&quot;
+         },
+         {
+            &quot;language&quot;: &quot;th&quot;
+         },
+         {
+            &quot;language&quot;: &quot;ti&quot;
+         },
+         {
+            &quot;language&quot;: &quot;tk&quot;
+         },
+         {
+            &quot;language&quot;: &quot;tl&quot;
+         },
+         {
+            &quot;language&quot;: &quot;tr&quot;
+         },
+         {
+            &quot;language&quot;: &quot;ts&quot;
+         },
+         {
+            &quot;language&quot;: &quot;tt&quot;
+         },
+         {
+            &quot;language&quot;: &quot;ug&quot;
+         },
+         {
+            &quot;language&quot;: &quot;uk&quot;
+         },
+         {
+            &quot;language&quot;: &quot;ur&quot;
+         },
+         {
+            &quot;language&quot;: &quot;uz&quot;
+         },
+         {
+            &quot;language&quot;: &quot;vi&quot;
+         },
+         {
+            &quot;language&quot;: &quot;xh&quot;
+         },
+         {
+            &quot;language&quot;: &quot;yi&quot;
+         },
+         {
+            &quot;language&quot;: &quot;yo&quot;
+         },
+         {
+            &quot;language&quot;: &quot;zh&quot;
+         },
+         {
+            &quot;language&quot;: &quot;zh-CN&quot;
+         },
+         {
+            &quot;language&quot;: &quot;zh-TW&quot;
+         },
+         {
+            &quot;language&quot;: &quot;zu&quot;
+         }
+      ]
+   }
+}
+Successful
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_languages.py::test</td>
+          <td class="col-duration">0.53</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>{
+   &quot;message&quot;: &quot;Endpoint &#x27;/language/translate/v2/languages&#x27; does not exist&quot;
+}
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_translate.py::test_successful_post</td>
+          <td class="col-duration">1.74</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> ------------------------------Captured stdout call------------------------------ <br/>q=Hello%2C%20world!&amp;target=yo&amp;source=en
+{&quot;data&quot;:{&quot;translations&quot;:[{&quot;translatedText&quot;:&quot;Mo ki O Ile Aiye!&quot;}]}}
+201 Successfully Created
+<br/></div></td></tr></tbody></table></body></html>
