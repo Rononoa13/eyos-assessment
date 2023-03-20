@@ -1,5 +1,5 @@
 # eyos-assessment
-#Assignmant 2
+#Assignment 2
 # Development Setup
 
 
@@ -22,3 +22,14 @@ pip install -r requirements.txt
 **Run Test**
 
 pytest <filename.py>
+
+**Allure for Reports**
+
+Run your tests using pytest with the --alluredir option to specify the directory where the allure reports will be generated:
+
+pytest --alluredir=./allure_reports
+
+Generate the allure report using the `allure`
+
+allure serve ./allure_reports
+ 
