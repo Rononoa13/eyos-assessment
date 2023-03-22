@@ -15,6 +15,7 @@
 `- Python`
 `- pytest`
 `- pytest-html`
+`- requests`
 
 **Run following commands from project root directory (Assignment_2/) to get up and running.**
 
