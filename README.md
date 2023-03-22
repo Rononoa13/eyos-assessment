@@ -33,7 +33,7 @@
 
 `pytest <filename.py>`
 
-### HTML Reports
+### HTML Reports -  Generate a log
  
  you can generate an HTML report by running pytest with the --html option:
  
