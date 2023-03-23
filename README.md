@@ -3,7 +3,14 @@
 # Development Setup
 
 <h3>Prerequisites</h3>
+
 `- Python`
+
+**Run Test**
+
+`python <filename.py>`
+
+Temporary Instuction provided in the document inside the project root folder.
 
 # Assignment 2
 # Development Setup
