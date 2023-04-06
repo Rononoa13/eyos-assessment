@@ -16,8 +16,6 @@ Step 2: Run **app.py** file from src > models > app.py
 
 Step 3: Run **app.py** from src
 
-Run app.py file inside of src folder.
-
 `python <filename.py>`
 
 
