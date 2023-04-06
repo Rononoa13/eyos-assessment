@@ -8,9 +8,19 @@
 
 **Run Test**
 
+Steps to run program:
+
+Step 1: Run **database.py** file from src > models > database.py
+
+Step 2: Run **app.py** file from src > models > app.py
+
+Step 3: Run **app.py** from src
+
+Run app.py file inside of src folder.
+
 `python <filename.py>`
 
-Temporary Instuction provided in the document inside the project root folder.
+
 
 # Assignment 2
 # Development Setup
@@ -46,6 +56,7 @@ Temporary Instuction provided in the document inside the project root folder.
  
  ` pytest --html=report.html`
  ` pytest --html=report.html <filename>`
+  ` pytest --html=report.html <foldername>`
  
 
 ### Test screenshot and log(s)
